@@ -1,0 +1,85 @@
+# Data directories (don't upload to Railway - too large)
+vibecheck_full_output/images/
+vibecheck_full_output/*.json
+vibecheck_full_output/*.db
+data/*.faiss
+data/*.npy
+*.csv
+restaurant_images/
+scripts/v
+scripts/vibecheck_full_output/images/
+image_collection_progress.json
+*checkpoint.json
+*.log
+
+# Old scripts (keeping for reference but not tracking)
+vibecheck_*.py
+vibe_*.png
+vibe_*.csv
+
+# Cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# MkDocs
+site/
+
+# Environment
+.env
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# MLFlow
+mlruns/
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+
+# DVC
+/dvc.lock
+.dvc/tmp
+.dvc/cache
+
+# Evidently monitoring
+monitoring/reports/
+monitoring/tests/
+
+# Data files - too large for GitHub, upload directly to Railway
+data/
+vibecheck_full_output/
+venv_embeddings/
+
+# Temp scripts
+*_checkpoint.json
+*.log
+monitor_scraper.sh
+check_progress.sh
+auto_restart_reviews*.sh
+run_*.sh
+cleanup_data_safely.py
+
+# Multiple embedding scripts (keeping in local only)
+generate_embeddings_safe.py
+generate_embeddings_simple.py
+generate_embeddings_transformers.py
+generate_embeddings_with_images.py
+generate_image_embeddings_final.py
+generate_new_embeddings_only.py
+generate_nyc_embeddings.py
+generate_nyc_embeddings_textonly.py
+get_more_reviews.py
+link_orphaned_photos.py
+
+# Temp docs
+DEPLOY_NOW.md
+IMAGE_EMBEDDING_STATUS.md
+INSTALL_DEPENDENCIES.md
+MANHATTAN_READY.md
+NEXT_STEPS.md
+NYC_APP_READY.md
+OUTSCRAPER_SETUP.md
+
