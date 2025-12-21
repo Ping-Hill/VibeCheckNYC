@@ -1,10 +1,6 @@
-# Data directories (don't upload to Railway - too large)
+# Data directories - keep DB and FAISS, ignore images
 vibecheck_full_output/images/
 vibecheck_full_output/*.json
-vibecheck_full_output/*.db
-data/*.faiss
-data/*.npy
-*.csv
 restaurant_images/
 scripts/v
 scripts/vibecheck_full_output/images/
@@ -48,9 +44,10 @@ mlflow.db-wal
 monitoring/reports/
 monitoring/tests/
 
-# Data files - too large for GitHub, upload directly to Railway
-data/
-vibecheck_full_output/
+# Data files - commit FAISS and DB, exclude images and venv
+data/*.csv
+vibecheck_full_output/images/
+vibecheck_full_output/*checkpoint*.json
 venv_embeddings/
 
 # Temp scripts
