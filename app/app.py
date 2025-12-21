@@ -72,6 +72,22 @@ else:
     USE_IMAGE_SEARCH = True
     print("   ✅ OpenCLIP model loaded (image search enabled)")
 
+# Load or build FAISS index
+if not FAISS_PATH.exists() or FAISS_PATH.stat().st_size < 1024:
+    print("⚠️  FAISS index missing or corrupted - copying from repo...")
+    # Copy from repo location to volume
+    import shutil
+    repo_faiss = Path(__file__).parent.parent / "data" / "vibecheck_index.faiss"
+    repo_meta = Path(__file__).parent.parent / "data" / "meta_ids.npy"
+
+    if repo_faiss.exists():
+        FAISS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(repo_faiss, FAISS_PATH)
+        shutil.copy(repo_meta, META_PATH)
+        print(f"   ✅ Copied FAISS index to volume ({FAISS_PATH.stat().st_size / 1024 / 1024:.1f} MB)")
+    else:
+        raise RuntimeError(f"FAISS index not found in repo at {repo_faiss}")
+
 faiss_index = faiss.read_index(str(FAISS_PATH))
 meta_ids = np.load(META_PATH)
 print(f"✅ Models loaded. FAISS index has {len(meta_ids)} restaurants.")
