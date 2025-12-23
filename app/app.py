@@ -138,7 +138,7 @@ def encode_query(text=None, image_file=None):
     return combined[None, :]
 
 
-def get_restaurant_details(restaurant_id, review_limit=2):
+def get_restaurant_details(restaurant_id, review_limit=10):
     """Get full restaurant details from database."""
     conn = get_db()
     cursor = conn.cursor()
@@ -171,6 +171,7 @@ def get_restaurant_details(restaurant_id, review_limit=2):
     )
 
     photo = cursor.fetchone()
+    # Return both local filename and Google URL - let frontend choose
     restaurant["photo_filename"] = photo["local_filename"] if photo else None
     restaurant["photo_url"] = photo["photo_url"] if photo else None
 
@@ -204,16 +205,10 @@ def get_restaurant_details(restaurant_id, review_limit=2):
     )
 
     reviews = cursor.fetchall()
-    # Truncate only if it's the short preview (2 reviews)
-    if review_limit <= 2:
-        restaurant["reviews"] = [
-            {"text": r["review_text"][:200] + "...", "likes": r["likes"]} for r in reviews
-        ]
-    else:
-        # Full text for detail page
-        restaurant["reviews"] = [
-            {"text": r["review_text"], "likes": r["likes"]} for r in reviews
-        ]
+    # Always return full review text
+    restaurant["reviews"] = [
+        {"text": r["review_text"], "likes": r["likes"]} for r in reviews
+    ]
 
     conn.close()
     return restaurant
