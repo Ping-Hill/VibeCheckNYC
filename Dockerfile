@@ -31,4 +31,5 @@ ENV FAISS_PATH=/app/vibecheck_full_output/vibecheck_index.faiss
 ENV META_PATH=/app/vibecheck_full_output/meta_ids.npy
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "2", "app.app:app"]
+# Use shell form to allow PORT env var expansion
+CMD gunicorn --bind 0.0.0.0:${PORT:-8080} --timeout 120 --workers 2 app.app:app
