@@ -14,6 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 
+# Copy startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Copy ALL vibecheck data (database, embeddings, images)
 # This avoids path-level failures and is more deterministic
 COPY vibecheck_full_output/ ./vibecheck_full_output/
@@ -30,6 +34,5 @@ ENV IMAGE_DIR=/app/vibecheck_full_output/images_compressed
 ENV FAISS_PATH=/app/vibecheck_full_output/vibecheck_index.faiss
 ENV META_PATH=/app/vibecheck_full_output/meta_ids.npy
 
-# Run the application
-# Use shell form to allow PORT env var expansion
-CMD gunicorn --bind 0.0.0.0:${PORT:-8080} --timeout 120 --workers 2 app.app:app
+# Run the application using startup script
+CMD ["/app/start.sh"]
