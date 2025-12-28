@@ -14,15 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app/ ./app/
 
-# Copy data files
-# Database and embeddings (small files - ~61 MB total)
-COPY vibecheck_full_output/vibecheck.db ./vibecheck_full_output/
-COPY vibecheck_full_output/vibe_embeddings.npy ./vibecheck_full_output/
-COPY vibecheck_full_output/vibecheck_index.faiss ./vibecheck_full_output/
-COPY vibecheck_full_output/meta_ids.npy ./vibecheck_full_output/
-
-# Images (large - 3.9 GB)
-COPY vibecheck_full_output/images_compressed/ ./vibecheck_full_output/images_compressed/
+# Copy ALL vibecheck data (database, embeddings, images)
+# This avoids path-level failures and is more deterministic
+COPY vibecheck_full_output/ ./vibecheck_full_output/
 
 # Expose port
 EXPOSE 8080

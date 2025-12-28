@@ -32,10 +32,15 @@ vibecheck_full_output/photo_linking_backups/
 # Exclude uncompressed images (we use images_compressed instead)
 vibecheck_full_output/images/
 
-# Exclude old data directory (we use vibecheck_full_output/vibecheck.db instead)
-data/vibecheck.db
-data/embeddings.npy
-data/vibe_embeddings.npy
+# Exclude expanded embeddings (we use the main ones)
+vibecheck_full_output/*_expanded.npy
+vibecheck_full_output/*_expanded.faiss
+
+# Exclude JSON metadata files (not needed at runtime)
+vibecheck_full_output/*.json
+
+# Exclude old data directory
+data/
 
 # Exclude script files
 check_orphaned_images.py
