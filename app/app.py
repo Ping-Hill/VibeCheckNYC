@@ -34,9 +34,9 @@ DATA_DIR = APP_DIR.parent / "data"
 # Data file paths (NYC configuration)
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", APP_DIR.parent / "vibecheck_full_output"))
 DB_PATH = Path(os.getenv("DB_PATH", APP_DIR.parent / "vibecheck_full_output" / "vibecheck.db"))
-IMAGE_DIR = Path(os.getenv("IMAGE_DIR", APP_DIR.parent / "vibecheck_full_output" / "images"))
-FAISS_PATH = Path(os.getenv("FAISS_PATH", DATA_DIR / "vibecheck_index.faiss"))
-META_PATH = Path(os.getenv("META_PATH", DATA_DIR / "meta_ids.npy"))
+IMAGE_DIR = Path(os.getenv("IMAGE_DIR", APP_DIR.parent / "vibecheck_full_output" / "images_compressed"))
+FAISS_PATH = Path(os.getenv("FAISS_PATH", OUTPUT_DIR / "vibecheck_index.faiss"))
+META_PATH = Path(os.getenv("META_PATH", OUTPUT_DIR / "meta_ids.npy"))
 VIBE_MAP_CSV = Path(os.getenv("VIBE_MAP_CSV", DATA_DIR / "vibe_map.csv"))
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -96,22 +96,69 @@ def get_db():
 
 
 def encode_query(text=None, image_file=None):
-    """Encode text and/or image query into combined embedding with cuisine weighting."""
-    # Cuisine keywords to boost (3x weight)
+    """Encode text and/or image query into combined embedding with cuisine and vibe weighting."""
+    # Cuisine keywords to boost (3x weight - STRONG)
     CUISINE_KEYWORDS = {
-        'indian', 'italian', 'french', 'chinese', 'japanese', 'mexican', 'thai', 'korean',
-        'vietnamese', 'mediterranean', 'greek', 'spanish', 'american', 'pizza', 'sushi',
-        'burger', 'bbq', 'steakhouse', 'seafood', 'vegetarian', 'vegan', 'ramen', 'pho'
+        # Asian
+        'chinese', 'japanese', 'korean', 'thai', 'vietnamese', 'indian',
+        'filipino', 'indonesian', 'malaysian', 'burmese',
+        # European
+        'italian', 'french', 'spanish', 'greek', 'german', 'portuguese',
+        'polish', 'russian',
+        # Latin American
+        'mexican', 'peruvian', 'brazilian', 'colombian', 'argentinian', 'cuban',
+        # Middle Eastern / African
+        'middle eastern', 'lebanese', 'turkish', 'moroccan', 'ethiopian', 'israeli',
+        # Mediterranean
+        'mediterranean',
+        # Specific dishes/styles (very popular in NYC)
+        'pizza', 'sushi', 'burger', 'bbq', 'steakhouse', 'seafood', 'ramen',
+        'pho', 'tapas', 'dim sum', 'curry', 'pasta', 'noodles', 'dumplings',
+        'bagels', 'deli', 'halal', 'soul food', 'cajun', 'creole',
+        # Dietary
+        'vegetarian', 'vegan'
     }
 
-    # Detect if query contains cuisine words and boost them
+    # Vibe/atmosphere keywords to boost (2x weight - moderate)
+    VIBE_KEYWORDS = {
+        # Romantic/Date
+        'romantic', 'cozy', 'intimate', 'date', 'candlelit', 'ambiance', 'atmosphere',
+        # Fancy/Casual (removed 'upscale' - it's in PRICE)
+        'quiet', 'elegant', 'fancy', 'casual', 'fine dining',
+        # Energy level
+        'lively', 'energetic', 'relaxed', 'chill', 'vibey', 'loud', 'noisy',
+        'buzzing', 'packed',
+        # Style
+        'trendy', 'hip', 'modern', 'rustic', 'charming', 'spacious',
+        'bright', 'dark', 'dimly'
+    }
+
+    # Price keywords to boost (2x weight - moderate)
+    PRICE_KEYWORDS = {
+        'cheap', 'affordable', 'budget', 'inexpensive',
+        'expensive', 'pricey', 'upscale', 'high-end',
+        'value', 'deal', 'splurge', 'reasonable'
+    }
+
+    # Detect if query contains keywords and boost them
     boosted_text = text or ""
     if boosted_text:
         words = boosted_text.lower().split()
         cuisine_words = [w for w in words if w in CUISINE_KEYWORDS]
+        vibe_words = [w for w in words if w in VIBE_KEYWORDS]
+        price_words = [w for w in words if w in PRICE_KEYWORDS]
+
         if cuisine_words:
-            # Repeat cuisine words 3x to boost their importance
+            # Repeat cuisine words 2 more times (3x total - STRONG boost)
             boosted_text = boosted_text + " " + " ".join(cuisine_words * 2)
+
+        if vibe_words:
+            # Repeat vibe words 1 more time (2x total - moderate boost)
+            boosted_text = boosted_text + " " + " ".join(vibe_words)
+
+        if price_words:
+            # Repeat price words 1 more time (2x total - moderate boost)
+            boosted_text = boosted_text + " " + " ".join(price_words)
 
     # Text embedding (384 dimensions)
     text_vec = text_model.encode(

@@ -22,3 +22,34 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Exclude old/backup directories
+FULL_BACKUP_*
+vibecheck_full_output/backups/
+vibecheck_full_output/orphaned_images_backup/
+vibecheck_full_output/photo_linking_backups/
+
+# Exclude uncompressed images (we use images_compressed instead)
+vibecheck_full_output/images/
+
+# Exclude old data directory (we use vibecheck_full_output/vibecheck.db instead)
+data/vibecheck.db
+data/embeddings.npy
+data/vibe_embeddings.npy
+
+# Exclude script files
+check_orphaned_images.py
+clean_duplicate_reviews.py
+clean_orphaned_database_records.py
+complete_database_audit.py
+compress_images_for_railway.py
+delete_orphaned_images.py
+generate_embeddings_simple_working.py
+
+# Exclude old expanded embeddings
+vibecheck_full_output/meta_ids_expanded.npy
+vibecheck_full_output/vibe_embeddings_expanded.npy
+vibecheck_full_output/vibecheck_index_expanded.faiss
+
+# Exclude documentation
+*.md
