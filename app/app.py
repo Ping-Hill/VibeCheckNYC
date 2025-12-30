@@ -193,7 +193,7 @@ def get_restaurant_details(restaurant_id, review_limit=10):
     # Get basic info
     cursor.execute(
         """
-        SELECT id, name, rating, address, reviews_count, place_id
+        SELECT id, name, rating, address, reviews_count, place_id, neighborhood
         FROM restaurants
         WHERE id = ?
     """,
@@ -320,12 +320,23 @@ def restaurant_detail(restaurant_id):
 def search():
     """Search for restaurants by text and/or image."""
     try:
-        query_text = request.form.get("text", "")
-        query_image = request.files.get("image")
-        top_k = int(request.form.get("top_k", 9))
+        # Support both JSON and form data
+        if request.is_json:
+            data = request.get_json()
+            query_text = data.get("query", "")
+            top_k = int(data.get("k", 20))
+            query_image = None
+        else:
+            query_text = request.form.get("text", "")
+            query_image = request.files.get("image")
+            top_k = int(request.form.get("top_k", 9))
 
         if not query_text and not query_image:
             return jsonify({"error": "Please provide text or image query"}), 400
+
+        # Extract neighborhood from query if present
+        from neighborhood_mapping import normalize_neighborhood_query
+        neighborhood_filter = normalize_neighborhood_query(query_text)
 
         # Read image file if provided
         image_bytes = query_image.read() if query_image else None
@@ -333,18 +344,28 @@ def search():
         # Encode query
         query_vec = encode_query(query_text, image_bytes)
 
-        # Search FAISS index
-        distances, indices = faiss_index.search(query_vec, top_k)
+        # Search FAISS index (get more results if filtering by neighborhood)
+        search_k = top_k * 5 if neighborhood_filter else top_k
+        distances, indices = faiss_index.search(query_vec, search_k)
 
-        # Get restaurant details
+        # Get restaurant details and filter by neighborhood if specified
         results = []
         for idx, distance in zip(indices[0], distances[0], strict=False):
             restaurant_id = int(meta_ids[idx])
             details = get_restaurant_details(restaurant_id)
 
             if details:
+                # Filter by neighborhood if detected in query
+                if neighborhood_filter:
+                    if details.get("neighborhood") != neighborhood_filter:
+                        continue
+
                 details["similarity_score"] = float(distance)
                 results.append(details)
+
+                # Stop once we have enough results
+                if len(results) >= top_k:
+                    break
 
         return jsonify({"results": results})
 
@@ -374,6 +395,7 @@ def map_data():
 
 
 @app.route("/api/vibe-stats")
+@app.route("/api/top-vibes")
 def vibe_stats():
     """Get overall vibe statistics."""
     conn = get_db()
@@ -384,7 +406,7 @@ def vibe_stats():
         FROM vibe_analysis
         GROUP BY vibe_name
         ORDER BY total DESC
-        LIMIT 10
+        LIMIT 20
     """)
 
     vibes = [{"name": row[0], "count": row[1]} for row in cursor.fetchall()]
