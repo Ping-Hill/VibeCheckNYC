@@ -1,5 +1,9 @@
-# Data directories - keep DB and FAISS, ignore images
+# Data directories - keep DB and FAISS, ignore ALL images (now on S3)
 vibecheck_full_output/images/
+vibecheck_full_output/images_compressed/
+vibecheck_full_output/orphaned_images_backup/
+vibecheck_full_output/photo_linking_backups/
+vibecheck_full_output/backups/
 vibecheck_full_output/*.json
 restaurant_images/
 scripts/v
