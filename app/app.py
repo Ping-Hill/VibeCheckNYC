@@ -355,7 +355,10 @@ def search():
             return jsonify({"error": "Please provide text or image query"}), 400
 
         # Extract neighborhood from query if present
-        from neighborhood_mapping import normalize_neighborhood_query
+        try:
+            from neighborhood_mapping import normalize_neighborhood_query
+        except ImportError:
+            from app.neighborhood_mapping import normalize_neighborhood_query
         neighborhood_filter = normalize_neighborhood_query(query_text)
 
         # Read image file if provided
