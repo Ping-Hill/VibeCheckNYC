@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeCheck NYC - Restaurant Vibe Discovery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .hero-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .tab-active {
+            border-bottom: 3px solid #667eea;
+            color: #667eea;
+        }
+
+        .collection-card:hover {
+            transform: translateY(-4px);
+            transition: all 0.3s;
+        }
+
+        .saved-heart {
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .saved-heart.active {
+            color: #ef4444;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="hero-gradient text-white shadow-lg">
+        <div class="container mx-auto px-6 py-8">
+            <h1 class="text-5xl font-bold mb-2">VibeCheck NYC</h1>
+            <p class="text-xl opacity-90">Discover restaurants by their vibe in New York City</p>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-6">
+            <div class="flex space-x-8">
+                <button onclick="switchTab('search')" class="tab-btn tab-active px-4 py-4 font-semibold">
+                    Search
+                </button>
+                <button onclick="switchTab('collections')" class="tab-btn px-4 py-4 font-semibold">
+                    Collections
+                </button>
+                <button onclick="switchTab('vibes')" class="tab-btn px-4 py-4 font-semibold">
+                    Popular Vibes
+                </button>
+                <button onclick="switchTab('saved')" class="tab-btn px-4 py-4 font-semibold">
+                    Saved ❤️
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+
+        <!-- Search Tab -->
+        <div id="search-tab" class="tab-content">
+            <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+                <h2 class="text-3xl font-bold mb-6">Find Your Perfect Vibe</h2>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Describe your desired vibe</label>
+                    <input
+                        id="queryText"
+                        type="text"
+                        class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                        placeholder="e.g., romantic italian in soho, trendy brunch spot, late night tacos..."
+                    />
+                </div>
+
+                <button
+                    onclick="searchRestaurants()"
+                    class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-purple-700 hover:to-indigo-700 transition"
+                >
+                    🔍 Search Restaurants
+                </button>
+            </section>
+
+            <!-- Search Results -->
+            <div id="searchResults" class="grid md:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- Collections Tab -->
+        <div id="collections-tab" class="tab-content hidden">
+            <h2 class="text-3xl font-bold mb-6">Curated Collections</h2>
+            <div id="collectionsContainer" class="space-y-6"></div>
+        </div>
+
+        <!-- Vibes Tab -->
+        <div id="vibes-tab" class="tab-content hidden">
+            <h2 class="text-3xl font-bold mb-6">Popular Vibes in NYC</h2>
+            <div id="vibesContainer" class="space-y-4"></div>
+        </div>
+
+        <!-- Saved Tab -->
+        <div id="saved-tab" class="tab-content hidden">
+            <h2 class="text-3xl font-bold mb-6">Saved Restaurants</h2>
+            <div id="savedContainer" class="grid md:grid-cols-3 gap-6"></div>
+        </div>
+
+    </main>
+
+    <!-- Restaurant Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4">
+            <div id="detailsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Collections data
+        const COLLECTIONS = [
+            { id: 'romantic', name: 'Best Date Spots', query: 'romantic intimate cozy', emoji: '💕' },
+            { id: 'brunch', name: 'Best Brunch', query: 'brunch breakfast', emoji: '🥞' },
+            { id: 'latenight', name: 'Late Night Eats', query: 'late night open late', emoji: '🌙' },
+            { id: 'outdoor', name: 'Outdoor Dining', query: 'outdoor patio rooftop garden', emoji: '🌳' },
+            { id: 'trendy', name: 'Trendy Spots', query: 'trendy hip instagram', emoji: '✨' },
+            { id: 'authentic', name: 'Hidden Gems', query: 'authentic local favorite hidden gem', emoji: '💎' },
+            { id: 'groups', name: 'Group Dinners', query: 'group friends family large party', emoji: '👥' },
+            { id: 'italian', name: 'Best Italian', query: 'italian authentic pasta', emoji: '🍝' },
+            { id: 'asian', name: 'Best Asian', query: 'japanese chinese thai korean ramen sushi', emoji: '🍜' },
+            { id: 'mexican', name: 'Best Mexican', query: 'mexican tacos authentic', emoji: '🌮' },
+        ];
+
+        // Saved restaurants (localStorage)
+        let savedRestaurants = JSON.parse(localStorage.getItem('savedRestaurants') || '[]');
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
+
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            event.target.classList.add('tab-active');
+
+            // Load content
+            if (tabName === 'collections') loadCollections();
+            if (tabName === 'vibes') loadVibes();
+            if (tabName === 'saved') loadSaved();
+        }
+
+        // Search restaurants
+        async function searchRestaurants(query = null) {
+            const searchQuery = query || document.getElementById('queryText').value;
+            if (!searchQuery) {
+                alert('Please enter a search query');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: searchQuery, k: 50 })
+                });
+
+                const data = await response.json();
+                displaySearchResults(data.results);
+            } catch (error) {
+                console.error('Search error:', error);
+                alert('Search failed. Please try again.');
+            }
+        }
+
+        // Display search results
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+
+            if (!results || results.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center col-span-3">No results found</p>';
+                return;
+            }
+
+            container.innerHTML = results.slice(0, 12).map(restaurant => `
+                <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="showRestaurantDetails(${restaurant.id})">
+                    ${restaurant.photo_filename ?
+                        `<img src="/images/${restaurant.photo_filename}" class="w-full h-48 object-cover" />` :
+                        `<div class="w-full h-48 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
+                            <span class="text-5xl">🍽️</span>
+                        </div>`
+                    }
+                    <div class="p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-bold flex-1">${restaurant.name}</h3>
+                            <span class="saved-heart ${isSaved(restaurant.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleSave(${restaurant.id}, '${restaurant.name}', ${restaurant.rating})">
+                                ${isSaved(restaurant.id) ? '❤️' : '🤍'}
+                            </span>
+                        </div>
+                        <div class="text-yellow-500 mb-2">⭐ ${restaurant.rating || 'N/A'}</div>
+                        ${restaurant.neighborhood ? `<div class="text-sm text-gray-600 mb-2">📍 ${restaurant.neighborhood}</div>` : ''}
+                        <p class="text-sm text-gray-600">${restaurant.address || ''}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load collections
+        async function loadCollections() {
+            const container = document.getElementById('collectionsContainer');
+            container.innerHTML = '<p class="text-center text-gray-500">Loading collections...</p>';
+
+            const collectionsData = await Promise.all(
+                COLLECTIONS.map(async (collection) => {
+                    try {
+                        const response = await fetch('/api/search', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ query: collection.query, k: 5 })
+                        });
+                        const data = await response.json();
+                        return { ...collection, restaurants: data.results || [] };
+                    } catch (error) {
+                        return { ...collection, restaurants: [] };
+                    }
+                })
+            );
+
+            container.innerHTML = collectionsData.map(collection => `
+                <div class="bg-white rounded-xl shadow-md p-6 collection-card">
+                    <div class="flex items-center mb-4 pb-4 border-b">
+                        <span class="text-3xl mr-3">${collection.emoji}</span>
+                        <h3 class="text-2xl font-bold">${collection.name}</h3>
+                    </div>
+                    ${collection.restaurants.length > 0 ? `
+                        <div class="space-y-3 mb-4">
+                            ${collection.restaurants.map((r, i) => `
+                                <div class="flex items-center justify-between hover:bg-gray-50 p-2 rounded cursor-pointer" onclick="showRestaurantDetails(${r.id})">
+                                    <div class="flex items-center flex-1">
+                                        <span class="font-bold text-purple-600 mr-3 w-6">${i + 1}</span>
+                                        <span class="flex-1">${r.name}</span>
+                                    </div>
+                                    <span class="text-yellow-500">⭐ ${r.rating}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="searchRestaurants('${collection.query}')" class="w-full py-2 text-purple-600 font-semibold hover:bg-purple-50 rounded">
+                            View All →
+                        </button>
+                    ` : '<p class="text-gray-500">Loading...</p>'}
+                </div>
+            `).join('');
+        }
+
+        // Load vibes
+        async function loadVibes() {
+            const container = document.getElementById('vibesContainer');
+            container.innerHTML = '<p class="text-center text-gray-500">Loading vibes...</p>';
+
+            try {
+                const response = await fetch('/api/top-vibes');
+                const data = await response.json();
+
+                container.innerHTML = data.vibes.map(vibe => `
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <div class="cursor-pointer" onclick="searchRestaurants('${vibe.name}')">
+                            <h3 class="text-xl font-semibold mb-2">${vibe.name}</h3>
+                            <p class="text-purple-600 mb-3">${vibe.count} restaurants</p>
+                        </div>
+                        ${vibe.restaurants && vibe.restaurants.length > 0 ? `
+                            <div class="border-t pt-3 space-y-2">
+                                ${vibe.restaurants.map((r, i) => `
+                                    <div class="flex justify-between items-center hover:bg-gray-50 p-2 rounded cursor-pointer" onclick="showRestaurantDetails(${r.id})">
+                                        <span class="text-sm">${i + 1}. ${r.name}</span>
+                                        <span class="text-sm text-yellow-500">⭐ ${r.rating}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<p class="text-red-500">Failed to load vibes</p>';
+            }
+        }
+
+        // Load saved restaurants
+        function loadSaved() {
+            const container = document.getElementById('savedContainer');
+
+            if (savedRestaurants.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-3 text-center py-12">
+                        <p class="text-gray-500 text-lg">No saved restaurants yet.</p>
+                        <p class="text-gray-400">Start exploring and save your favorites!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = savedRestaurants.map(restaurant => `
+                <div class="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transition cursor-pointer" onclick="showRestaurantDetails(${restaurant.id})">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold flex-1">${restaurant.name}</h3>
+                        <span class="saved-heart active" onclick="event.stopPropagation(); toggleSave(${restaurant.id}, '${restaurant.name}', ${restaurant.rating})">❤️</span>
+                    </div>
+                    <div class="text-yellow-500">⭐ ${restaurant.rating || 'N/A'}</div>
+                </div>
+            `).join('');
+        }
+
+        // Toggle save restaurant
+        function toggleSave(id, name, rating) {
+            const index = savedRestaurants.findIndex(r => r.id === id);
+
+            if (index > -1) {
+                savedRestaurants.splice(index, 1);
+                alert('Removed from saved list');
+            } else {
+                savedRestaurants.push({ id, name, rating });
+                alert('Added to saved list!');
+            }
+
+            localStorage.setItem('savedRestaurants', JSON.stringify(savedRestaurants));
+
+            // Refresh current tab
+            const activeTab = document.querySelector('.tab-active').textContent.toLowerCase().trim();
+            if (activeTab.includes('saved')) {
+                loadSaved();
+            }
+        }
+
+        // Check if restaurant is saved
+        function isSaved(id) {
+            return savedRestaurants.some(r => r.id === id);
+        }
+
+        // Show restaurant details
+        async function showRestaurantDetails(id) {
+            const modal = document.getElementById('detailsModal');
+            const content = document.getElementById('detailsContent');
+
+            content.innerHTML = '<div class="p-8 text-center">Loading...</div>';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            try {
+                const response = await fetch(`/api/restaurant/${id}`);
+                const restaurant = await response.json();
+
+                content.innerHTML = `
+                    <div class="relative">
+                        <button onclick="closeModal()" class="absolute top-4 right-4 text-2xl text-gray-600 hover:text-gray-900 z-10">×</button>
+
+                        ${restaurant.photo_filename ?
+                            `<img src="/images/${restaurant.photo_filename}" class="w-full h-64 object-cover" />` :
+                            `<div class="w-full h-64 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
+                                <span class="text-7xl">🍽️</span>
+                            </div>`
+                        }
+
+                        <div class="p-8">
+                            <h2 class="text-3xl font-bold mb-4">${restaurant.name}</h2>
+                            <div class="text-yellow-500 text-xl mb-4">⭐ ${restaurant.rating} (${restaurant.reviews_count || 0} reviews)</div>
+                            <p class="text-gray-600 mb-4">${restaurant.address || ''}</p>
+                            ${restaurant.neighborhood ? `<p class="text-gray-600 mb-4">📍 ${restaurant.neighborhood}</p>` : ''}
+
+                            <div class="flex gap-4 mb-6">
+                                <button onclick="toggleSave(${restaurant.id}, '${restaurant.name}', ${restaurant.rating})" class="flex-1 py-3 px-6 rounded-lg font-semibold ${isSaved(restaurant.id) ? 'bg-red-500 text-white' : 'bg-gray-200'}">
+                                    ${isSaved(restaurant.id) ? '❤️ Saved' : '🤍 Save'}
+                                </button>
+                                <button onclick="shareRestaurant('${restaurant.name}', ${restaurant.rating}, '${restaurant.address || ''}')" class="flex-1 py-3 px-6 bg-blue-500 text-white rounded-lg font-semibold">
+                                    📤 Share
+                                </button>
+                            </div>
+
+                            ${restaurant.place_id ? `
+                                <a href="https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${restaurant.place_id}" target="_blank" class="block w-full py-3 px-6 bg-purple-600 text-white rounded-lg font-semibold text-center hover:bg-purple-700 mb-6">
+                                    View Restaurant Info (Menu, Hours, Website)
+                                </a>
+                            ` : ''}
+
+                            ${restaurant.vibes && restaurant.vibes.length > 0 ? `
+                                <div class="mb-6">
+                                    <h3 class="font-bold text-lg mb-2">Vibes:</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${restaurant.vibes.map(v => `
+                                            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                                                ${v.name} (${v.mention_count})
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${restaurant.reviews && restaurant.reviews.length > 0 ? `
+                                <div>
+                                    <h3 class="font-bold text-lg mb-3">Recent Reviews:</h3>
+                                    <div class="space-y-4">
+                                        ${restaurant.reviews.slice(0, 5).map(review => `
+                                            <div class="bg-gray-50 p-4 rounded-lg">
+                                                <div class="text-yellow-500 mb-2">⭐ ${review.rating}</div>
+                                                <p class="text-gray-700">${review.text}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                content.innerHTML = '<div class="p-8 text-center text-red-500">Failed to load restaurant details</div>';
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('detailsModal').classList.add('hidden');
+            document.getElementById('detailsModal').classList.remove('flex');
+        }
+
+        // Share restaurant
+        function shareRestaurant(name, rating, address) {
+            const text = `Check out ${name} on VibeCheck NYC!\nRating: ${rating}⭐\n${address}`;
+
+            if (navigator.share) {
+                navigator.share({ title: 'VibeCheck NYC', text });
+            } else {
+                navigator.clipboard.writeText(text);
+                alert('Restaurant info copied to clipboard!');
+            }
+        }
+
+        // Close modal on background click
+        document.getElementById('detailsModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load default tab content
+            loadCollections();
+        });
+    </script>
+</body>
+</html>

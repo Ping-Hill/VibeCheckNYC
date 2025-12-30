@@ -204,7 +204,7 @@ def get_restaurant_details(restaurant_id, review_limit=10):
     # Get basic info
     cursor.execute(
         """
-        SELECT id, name, rating, address, reviews_count, place_id, neighborhood
+        SELECT id, name, rating, address, reviews_count, place_id, neighborhood, price_level
         FROM restaurants
         WHERE id = ?
     """,
@@ -318,6 +318,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/nyc")
+def index_nyc():
+    """NYC landing page with mobile app features."""
+    return render_template("index_nyc.html")
+
+
 @app.route("/restaurant/<int:restaurant_id>")
 def restaurant_detail(restaurant_id):
     """Restaurant detail page."""
@@ -337,10 +343,13 @@ def search():
             query_text = data.get("query", "")
             top_k = int(data.get("k", 20))
             query_image = None
+            # Price filter: 1 = $, 2 = $$, 3 = $$$, 4 = $$$$
+            price_filter = data.get("price_level")  # Can be single value or list
         else:
             query_text = request.form.get("text", "")
             query_image = request.files.get("image")
             top_k = int(request.form.get("top_k", 9))
+            price_filter = request.form.get("price_level")
 
         if not query_text and not query_image:
             return jsonify({"error": "Please provide text or image query"}), 400
@@ -359,7 +368,7 @@ def search():
         search_k = top_k * 5 if neighborhood_filter else top_k
         distances, indices = faiss_index.search(query_vec, search_k)
 
-        # Get restaurant details and filter by neighborhood if specified
+        # Get restaurant details and filter by neighborhood and price if specified
         results = []
         for idx, distance in zip(indices[0], distances[0], strict=False):
             restaurant_id = int(meta_ids[idx])
@@ -370,6 +379,17 @@ def search():
                 if neighborhood_filter:
                     if details.get("neighborhood") != neighborhood_filter:
                         continue
+
+                # Filter by price level if specified
+                if price_filter is not None:
+                    restaurant_price = details.get("price_level")
+                    # Handle both single value and list of values
+                    if isinstance(price_filter, list):
+                        if restaurant_price not in price_filter:
+                            continue
+                    else:
+                        if restaurant_price != int(price_filter):
+                            continue
 
                 details["similarity_score"] = float(distance)
                 results.append(details)
