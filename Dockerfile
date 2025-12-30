@@ -23,6 +23,7 @@ RUN chmod +x /app/start.sh
 
 # Copy ALL vibecheck data (database, embeddings, images)
 # This avoids path-level failures and is more deterministic
+# Cache bust: 2025-12-29-17:45 - Updated DB with price_level and neighborhood
 COPY vibecheck_full_output/ ./vibecheck_full_output/
 
 # Expose port
