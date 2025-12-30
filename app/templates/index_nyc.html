@@ -199,7 +199,7 @@
                 return;
             }
 
-            container.innerHTML = results.slice(0, 12).map(restaurant => `
+            container.innerHTML = results.map(restaurant => `
                 <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="showRestaurantDetails(${restaurant.id})">
                     ${restaurant.photo_filename ?
                         `<img src="${getImageUrl(restaurant.photo_filename)}" class="w-full h-48 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center\\'><span class=\\'text-5xl\\'>🍽️</span></div>'" />` :
@@ -331,10 +331,8 @@
 
             if (index > -1) {
                 savedRestaurants.splice(index, 1);
-                alert('Removed from saved list');
             } else {
                 savedRestaurants.push({ id, name, rating });
-                alert('Added to saved list!');
             }
 
             localStorage.setItem('savedRestaurants', JSON.stringify(savedRestaurants));
