@@ -61,7 +61,7 @@
                     Popular Vibes
                 </button>
                 <button onclick="switchTab('saved')" class="tab-btn px-4 py-4 font-semibold">
-                    Saved ❤️
+                    Saved
                 </button>
             </div>
         </div>
@@ -125,19 +125,28 @@
     </div>
 
     <script>
-        // Collections data
+        // S3 bucket URL for images
+        const S3_BUCKET_URL = 'https://vibecheck-nyc-images.s3.us-east-1.amazonaws.com';
+
+        // Collections data (emojis removed)
         const COLLECTIONS = [
-            { id: 'romantic', name: 'Best Date Spots', query: 'romantic intimate cozy', emoji: '💕' },
-            { id: 'brunch', name: 'Best Brunch', query: 'brunch breakfast', emoji: '🥞' },
-            { id: 'latenight', name: 'Late Night Eats', query: 'late night open late', emoji: '🌙' },
-            { id: 'outdoor', name: 'Outdoor Dining', query: 'outdoor patio rooftop garden', emoji: '🌳' },
-            { id: 'trendy', name: 'Trendy Spots', query: 'trendy hip instagram', emoji: '✨' },
-            { id: 'authentic', name: 'Hidden Gems', query: 'authentic local favorite hidden gem', emoji: '💎' },
-            { id: 'groups', name: 'Group Dinners', query: 'group friends family large party', emoji: '👥' },
-            { id: 'italian', name: 'Best Italian', query: 'italian authentic pasta', emoji: '🍝' },
-            { id: 'asian', name: 'Best Asian', query: 'japanese chinese thai korean ramen sushi', emoji: '🍜' },
-            { id: 'mexican', name: 'Best Mexican', query: 'mexican tacos authentic', emoji: '🌮' },
+            { id: 'romantic', name: 'Best Date Spots', query: 'romantic intimate cozy' },
+            { id: 'brunch', name: 'Best Brunch', query: 'brunch breakfast' },
+            { id: 'latenight', name: 'Late Night Eats', query: 'late night open late' },
+            { id: 'outdoor', name: 'Outdoor Dining', query: 'outdoor patio rooftop garden' },
+            { id: 'trendy', name: 'Trendy Spots', query: 'trendy hip instagram' },
+            { id: 'authentic', name: 'Hidden Gems', query: 'authentic local favorite hidden gem' },
+            { id: 'groups', name: 'Group Dinners', query: 'group friends family large party' },
+            { id: 'italian', name: 'Best Italian', query: 'italian authentic pasta' },
+            { id: 'asian', name: 'Best Asian', query: 'japanese chinese thai korean ramen sushi' },
+            { id: 'mexican', name: 'Best Mexican', query: 'mexican tacos authentic' },
         ];
+
+        // Helper function to get image URL
+        function getImageUrl(filename) {
+            if (!filename) return null;
+            return `${S3_BUCKET_URL}/${filename}`;
+        }
 
         // Saved restaurants (localStorage)
         let savedRestaurants = JSON.parse(localStorage.getItem('savedRestaurants') || '[]');
@@ -193,7 +202,7 @@
             container.innerHTML = results.slice(0, 12).map(restaurant => `
                 <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition cursor-pointer" onclick="showRestaurantDetails(${restaurant.id})">
                     ${restaurant.photo_filename ?
-                        `<img src="/images/${restaurant.photo_filename}" class="w-full h-48 object-cover" />` :
+                        `<img src="${getImageUrl(restaurant.photo_filename)}" class="w-full h-48 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-48 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center\\'><span class=\\'text-5xl\\'>🍽️</span></div>'" />` :
                         `<div class="w-full h-48 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
                             <span class="text-5xl">🍽️</span>
                         </div>`
@@ -237,7 +246,6 @@
             container.innerHTML = collectionsData.map(collection => `
                 <div class="bg-white rounded-xl shadow-md p-6 collection-card">
                     <div class="flex items-center mb-4 pb-4 border-b">
-                        <span class="text-3xl mr-3">${collection.emoji}</span>
                         <h3 class="text-2xl font-bold">${collection.name}</h3>
                     </div>
                     ${collection.restaurants.length > 0 ? `
@@ -361,7 +369,7 @@
                         <button onclick="closeModal()" class="absolute top-4 right-4 text-2xl text-gray-600 hover:text-gray-900 z-10">×</button>
 
                         ${restaurant.photo_filename ?
-                            `<img src="/images/${restaurant.photo_filename}" class="w-full h-64 object-cover" />` :
+                            `<img src="${getImageUrl(restaurant.photo_filename)}" class="w-full h-64 object-cover" onerror="this.parentElement.innerHTML='<div class=\\'w-full h-64 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center\\'><span class=\\'text-7xl\\'>🍽️</span></div>'" />` :
                             `<div class="w-full h-64 bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
                                 <span class="text-7xl">🍽️</span>
                             </div>`
@@ -369,16 +377,16 @@
 
                         <div class="p-8">
                             <h2 class="text-3xl font-bold mb-4">${restaurant.name}</h2>
-                            <div class="text-yellow-500 text-xl mb-4">⭐ ${restaurant.rating} (${restaurant.reviews_count || 0} reviews)</div>
+                            <div class="text-yellow-500 text-xl mb-4">⭐ ${restaurant.rating || 'N/A'} (${restaurant.reviews_count || 0} reviews)</div>
                             <p class="text-gray-600 mb-4">${restaurant.address || ''}</p>
                             ${restaurant.neighborhood ? `<p class="text-gray-600 mb-4">📍 ${restaurant.neighborhood}</p>` : ''}
 
                             <div class="flex gap-4 mb-6">
-                                <button onclick="toggleSave(${restaurant.id}, '${restaurant.name}', ${restaurant.rating})" class="flex-1 py-3 px-6 rounded-lg font-semibold ${isSaved(restaurant.id) ? 'bg-red-500 text-white' : 'bg-gray-200'}">
-                                    ${isSaved(restaurant.id) ? '❤️ Saved' : '🤍 Save'}
+                                <button onclick="toggleSave(${restaurant.id}, '${restaurant.name}', ${restaurant.rating || 0})" class="flex-1 py-3 px-6 rounded-lg font-semibold ${isSaved(restaurant.id) ? 'bg-red-500 text-white' : 'bg-gray-200'}">
+                                    ${isSaved(restaurant.id) ? 'Saved' : 'Save'}
                                 </button>
-                                <button onclick="shareRestaurant('${restaurant.name}', ${restaurant.rating}, '${restaurant.address || ''}')" class="flex-1 py-3 px-6 bg-blue-500 text-white rounded-lg font-semibold">
-                                    📤 Share
+                                <button onclick="shareRestaurant('${restaurant.name}', ${restaurant.rating || 0}, '${restaurant.address || ''}')" class="flex-1 py-3 px-6 bg-blue-500 text-white rounded-lg font-semibold">
+                                    Share
                                 </button>
                             </div>
 
@@ -394,7 +402,7 @@
                                     <div class="flex flex-wrap gap-2">
                                         ${restaurant.vibes.map(v => `
                                             <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
-                                                ${v.name} (${v.mention_count})
+                                                ${v.name || 'Unknown'} ${v.mention_count ? `(${v.mention_count})` : ''}
                                             </span>
                                         `).join('')}
                                     </div>
@@ -407,8 +415,8 @@
                                     <div class="space-y-4">
                                         ${restaurant.reviews.slice(0, 5).map(review => `
                                             <div class="bg-gray-50 p-4 rounded-lg">
-                                                <div class="text-yellow-500 mb-2">⭐ ${review.rating}</div>
-                                                <p class="text-gray-700">${review.text}</p>
+                                                <div class="text-yellow-500 mb-2">⭐ ${review.rating || 'N/A'}</div>
+                                                <p class="text-gray-700">${review.text || 'No review text'}</p>
                                             </div>
                                         `).join('')}
                                     </div>

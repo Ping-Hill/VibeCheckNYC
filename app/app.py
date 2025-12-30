@@ -314,7 +314,13 @@ def import_vibe_map_to_db():
 
 @app.route("/")
 def index():
-    """Main page."""
+    """Main page - NYC version."""
+    return render_template("index_nyc.html")
+
+
+@app.route("/dc")
+def index_dc():
+    """DC landing page (legacy)."""
     return render_template("index.html")
 
 
