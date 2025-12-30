@@ -217,13 +217,16 @@ def get_restaurant_details(restaurant_id, review_limit=10):
 
     restaurant = dict(row)
 
-    # Get all photos (prioritize Google photos by ordering by photo_url)
+    # Get all photos (prioritize vibe photos which are usually interior/atmosphere shots)
     cursor.execute(
         """
         SELECT local_filename, photo_url
         FROM vibe_photos
         WHERE restaurant_id = ?
-        ORDER BY CASE WHEN photo_url IS NOT NULL THEN 0 ELSE 1 END, id
+        ORDER BY
+            CASE WHEN local_filename LIKE '%_vibe_%' THEN 0 ELSE 1 END,
+            CASE WHEN photo_url IS NOT NULL THEN 0 ELSE 1 END,
+            id
     """,
         (restaurant_id,),
     )
