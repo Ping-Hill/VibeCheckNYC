@@ -123,14 +123,25 @@ def encode_query(text=None, image_file=None):
     VIBE_KEYWORDS = {
         # Romantic/Date
         'romantic', 'cozy', 'intimate', 'date', 'candlelit', 'ambiance', 'atmosphere',
-        # Fancy/Casual (removed 'upscale' - it's in PRICE)
+        'date night',
+        # Fancy/Casual
         'quiet', 'elegant', 'fancy', 'casual', 'fine dining',
         # Energy level
         'lively', 'energetic', 'relaxed', 'chill', 'vibey', 'loud', 'noisy',
         'buzzing', 'packed',
         # Style
         'trendy', 'hip', 'modern', 'rustic', 'charming', 'spacious',
-        'bright', 'dark', 'dimly'
+        'bright', 'dark', 'dimly', 'instagram', 'instagrammable',
+        # Outdoor/Seating
+        'outdoor', 'patio', 'rooftop', 'garden', 'sidewalk', 'alfresco',
+        'bar seating', 'counter seating',
+        # Authenticity
+        'fusion', 'authentic', 'traditional', 'homestyle', 'family-style',
+        'hidden gem', 'local favorite', 'hole in the wall',
+        # Group/Solo
+        'group', 'solo', 'family', 'kids', 'friends',
+        # Time/Speed
+        'brunch', 'late night', 'quick', 'fast', 'happy hour'
     }
 
     # Price keywords to boost (2x weight - moderate)
