@@ -217,21 +217,26 @@ def get_restaurant_details(restaurant_id, review_limit=10):
 
     restaurant = dict(row)
 
-    # Get photos (prioritize Google photos by ordering by photo_url)
+    # Get all photos (prioritize Google photos by ordering by photo_url)
     cursor.execute(
         """
         SELECT local_filename, photo_url
         FROM vibe_photos
         WHERE restaurant_id = ?
         ORDER BY CASE WHEN photo_url IS NOT NULL THEN 0 ELSE 1 END, id
-        LIMIT 1
     """,
         (restaurant_id,),
     )
 
-    photo = cursor.fetchone()
-    # Return both local filename and Google URL - let frontend choose
-    # Use 'image_filename' for mobile app compatibility
+    photos = cursor.fetchall()
+    # Return all photos for gallery/carousel
+    restaurant["photos"] = [
+        {"filename": p["local_filename"], "url": p["photo_url"]}
+        for p in photos
+    ] if photos else []
+
+    # Keep first photo for backwards compatibility
+    photo = photos[0] if photos else None
     restaurant["image_filename"] = photo["local_filename"] if photo else None
     restaurant["photo_filename"] = photo["local_filename"] if photo else None  # Keep for web compatibility
     restaurant["photo_url"] = photo["photo_url"] if photo else None
