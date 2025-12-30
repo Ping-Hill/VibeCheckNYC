@@ -81,7 +81,7 @@
                         id="queryText"
                         type="text"
                         class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
-                        placeholder="e.g., romantic italian in soho, trendy brunch spot, late night tacos..."
+                        placeholder="e.g., romantic italian in soho, trendy brunch spot, late night tacos"
                     />
                 </div>
 
@@ -89,7 +89,7 @@
                     onclick="searchRestaurants()"
                     class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-purple-700 hover:to-indigo-700 transition"
                 >
-                    🔍 Search Restaurants
+                    Search Restaurants
                 </button>
             </section>
 
@@ -214,7 +214,7 @@
                                 ${isSaved(restaurant.id) ? '❤️' : '🤍'}
                             </span>
                         </div>
-                        <div class="text-yellow-500 mb-2">⭐ ${restaurant.rating || 'N/A'}</div>
+                        <div class="text-yellow-500 mb-2">${restaurant.rating ? `⭐ ${restaurant.rating}` : ''}</div>
                         ${restaurant.neighborhood ? `<div class="text-sm text-gray-600 mb-2">📍 ${restaurant.neighborhood}</div>` : ''}
                         <p class="text-sm text-gray-600">${restaurant.address || ''}</p>
                     </div>
@@ -320,7 +320,7 @@
                         <h3 class="text-lg font-bold flex-1">${restaurant.name}</h3>
                         <span class="saved-heart active" onclick="event.stopPropagation(); toggleSave(${restaurant.id}, '${restaurant.name}', ${restaurant.rating})">❤️</span>
                     </div>
-                    <div class="text-yellow-500">⭐ ${restaurant.rating || 'N/A'}</div>
+                    <div class="text-yellow-500">${restaurant.rating ? `⭐ ${restaurant.rating}` : ''}</div>
                 </div>
             `).join('');
         }
@@ -377,7 +377,7 @@
 
                         <div class="p-8">
                             <h2 class="text-3xl font-bold mb-4">${restaurant.name}</h2>
-                            <div class="text-yellow-500 text-xl mb-4">⭐ ${restaurant.rating || 'N/A'} (${restaurant.reviews_count || 0} reviews)</div>
+                            <div class="text-yellow-500 text-xl mb-4">${restaurant.rating ? `⭐ ${restaurant.rating}` : ''} ${restaurant.reviews_count ? `(${restaurant.reviews_count} reviews)` : ''}</div>
                             <p class="text-gray-600 mb-4">${restaurant.address || ''}</p>
                             ${restaurant.neighborhood ? `<p class="text-gray-600 mb-4">📍 ${restaurant.neighborhood}</p>` : ''}
 
@@ -415,7 +415,6 @@
                                     <div class="space-y-4">
                                         ${restaurant.reviews.slice(0, 5).map(review => `
                                             <div class="bg-gray-50 p-4 rounded-lg">
-                                                <div class="text-yellow-500 mb-2">⭐ ${review.rating || 'N/A'}</div>
                                                 <p class="text-gray-700">${review.text || 'No review text'}</p>
                                             </div>
                                         `).join('')}

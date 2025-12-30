@@ -230,7 +230,9 @@ def get_restaurant_details(restaurant_id, review_limit=10):
 
     photo = cursor.fetchone()
     # Return both local filename and Google URL - let frontend choose
-    restaurant["photo_filename"] = photo["local_filename"] if photo else None
+    # Use 'image_filename' for mobile app compatibility
+    restaurant["image_filename"] = photo["local_filename"] if photo else None
+    restaurant["photo_filename"] = photo["local_filename"] if photo else None  # Keep for web compatibility
     restaurant["photo_url"] = photo["photo_url"] if photo else None
 
     # Get vibes
