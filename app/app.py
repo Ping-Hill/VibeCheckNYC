@@ -397,7 +397,7 @@ def map_data():
 @app.route("/api/vibe-stats")
 @app.route("/api/top-vibes")
 def vibe_stats():
-    """Get overall vibe statistics."""
+    """Get overall vibe statistics with top restaurants for each vibe."""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -409,9 +409,38 @@ def vibe_stats():
         LIMIT 20
     """)
 
-    vibes = [{"name": row[0], "count": row[1]} for row in cursor.fetchall()]
-    conn.close()
+    vibes = []
+    for row in cursor.fetchall():
+        vibe_name = row[0]
+        total_count = row[1]
 
+        # Get top 5 restaurants with this vibe
+        cursor.execute("""
+            SELECT r.id, r.name, r.rating, va.mention_count
+            FROM vibe_analysis va
+            JOIN restaurants r ON va.restaurant_id = r.id
+            WHERE va.vibe_name = ?
+            ORDER BY va.mention_count DESC, r.rating DESC
+            LIMIT 5
+        """, (vibe_name,))
+
+        restaurants = [
+            {
+                "id": r[0],
+                "name": r[1],
+                "rating": r[2],
+                "mention_count": r[3]
+            }
+            for r in cursor.fetchall()
+        ]
+
+        vibes.append({
+            "name": vibe_name,
+            "count": total_count,
+            "restaurants": restaurants
+        })
+
+    conn.close()
     return jsonify({"vibes": vibes})
 
 
