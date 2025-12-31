@@ -34,7 +34,6 @@ ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 ENV OUTPUT_DIR=/app/vibecheck_full_output
 ENV DB_PATH=/app/vibecheck_full_output/vibecheck.db
-ENV IMAGE_DIR=/app/vibecheck_full_output/images_compressed
 ENV FAISS_PATH=/app/vibecheck_full_output/vibecheck_index.faiss
 ENV META_PATH=/app/vibecheck_full_output/meta_ids.npy
 

@@ -29,8 +29,10 @@ vibecheck_full_output/backups/
 vibecheck_full_output/orphaned_images_backup/
 vibecheck_full_output/photo_linking_backups/
 
-# Exclude uncompressed images (we use images_compressed instead)
+# Exclude ALL image folders (images now served from S3)
 vibecheck_full_output/images/
+vibecheck_full_output/images_compressed/
+vibecheck_full_output/images_uncompressed/
 
 # Exclude expanded embeddings (we use the main ones)
 vibecheck_full_output/*_expanded.npy
