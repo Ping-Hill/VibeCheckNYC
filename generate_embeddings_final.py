@@ -29,7 +29,7 @@ except ImportError:
 
 OUTPUT_DIR = Path("./vibecheck_full_output")
 DB_PATH = OUTPUT_DIR / "vibecheck.db"
-IMAGE_DIR = OUTPUT_DIR / "images"
+IMAGE_DIR = OUTPUT_DIR / "images_compressed"  # Use compressed images
 FAISS_PATH = OUTPUT_DIR / "vibecheck_index.faiss"
 META_IDS_PATH = OUTPUT_DIR / "meta_ids.npy"
 EMBEDDINGS_PATH = OUTPUT_DIR / "vibe_embeddings.npy"
@@ -99,19 +99,131 @@ def main():
         else:
             text_content = name or ""
 
-        # Boost cuisine keywords by repeating them 3x
+        # CUISINE keywords (3x boost - STRONG)
         CUISINE_KEYWORDS = {
-            'indian', 'italian', 'french', 'chinese', 'japanese', 'mexican', 'thai', 'korean',
-            'vietnamese', 'mediterranean', 'greek', 'spanish', 'american', 'pizza', 'sushi',
-            'burger', 'bbq', 'steakhouse', 'seafood', 'vegetarian', 'vegan', 'ramen', 'pho'
+            # Asian
+            'chinese', 'japanese', 'korean', 'thai', 'vietnamese', 'indian',
+            'filipino', 'indonesian', 'malaysian', 'burmese',
+            # European
+            'italian', 'french', 'spanish', 'greek', 'german', 'portuguese',
+            'polish', 'russian',
+            # Latin American
+            'mexican', 'peruvian', 'brazilian', 'colombian', 'argentinian', 'cuban',
+            # Middle Eastern / African
+            'middle eastern', 'lebanese', 'turkish', 'moroccan', 'ethiopian', 'israeli',
+            # Mediterranean
+            'mediterranean',
+            # Specific dishes/styles (very popular in NYC)
+            'pizza', 'sushi', 'burger', 'bbq', 'steakhouse', 'seafood', 'ramen',
+            'pho', 'tapas', 'dim sum', 'curry', 'pasta', 'noodles', 'dumplings',
+            'bagels', 'deli', 'halal', 'soul food', 'cajun', 'creole',
+            # Dietary
+            'vegetarian', 'vegan'
         }
 
-        # Find cuisine words in text and boost them
+        # VIBE/ATMOSPHERE keywords (2x boost - moderate)
+        VIBE_KEYWORDS = {
+            # Romantic/Date
+            'romantic', 'cozy', 'intimate', 'date', 'candlelit', 'ambiance', 'atmosphere',
+            'date night',
+            # Fancy/Casual
+            'quiet', 'elegant', 'fancy', 'casual', 'fine dining',
+            # Energy level
+            'lively', 'energetic', 'relaxed', 'chill', 'vibey', 'loud', 'noisy',
+            'buzzing', 'packed',
+            # Style
+            'trendy', 'hip', 'modern', 'rustic', 'charming', 'spacious',
+            'bright', 'dark', 'dimly', 'instagram', 'instagrammable',
+            # Outdoor/Seating
+            'outdoor', 'patio', 'rooftop', 'garden', 'sidewalk', 'alfresco',
+            'bar seating', 'counter seating',
+            # Authenticity
+            'fusion', 'authentic', 'traditional', 'homestyle', 'family-style',
+            'hidden gem', 'local favorite', 'hole in the wall',
+            # Group/Solo
+            'group', 'solo', 'family', 'kids', 'friends',
+            # Time/Speed
+            'brunch', 'late night', 'quick', 'fast', 'happy hour'
+        }
+
+        # PRICE keywords (2x boost - moderate)
+        PRICE_KEYWORDS = {
+            'cheap', 'affordable', 'budget', 'inexpensive',
+            'expensive', 'pricey', 'upscale', 'high-end',
+            'value', 'deal', 'splurge', 'reasonable'
+        }
+
+        # MANHATTAN NEIGHBORHOOD keywords (2x boost - moderate)
+        NEIGHBORHOOD_KEYWORDS = {
+            # Manhattan ONLY
+            'soho', 'tribeca', 'chinatown', 'financial district', 'fidi', 'battery park',
+            'lower east side', 'les', 'east village', 'west village', 'greenwich village',
+            'noho', 'nolita', 'bowery', 'chelsea', 'flatiron', 'gramercy', 'union square',
+            'midtown', 'times square', 'hells kitchen', 'murray hill', 'kips bay',
+            'upper east side', 'ues', 'upper west side', 'uws', 'morningside heights',
+            'harlem', 'east harlem', 'washington heights', 'inwood',
+            'manhattan', 'downtown', 'uptown'
+        }
+
+        # VENUE TYPE keywords (2x boost - moderate)
+        VENUE_KEYWORDS = {
+            'restaurant', 'bar', 'cafe', 'coffee shop', 'bakery', 'bistro', 'brasserie',
+            'gastropub', 'pub', 'tavern', 'lounge', 'wine bar', 'cocktail bar',
+            'speakeasy', 'dive bar', 'sports bar', 'brewery', 'food hall', 'food court',
+            'diner', 'eatery', 'spot', 'joint', 'taqueria', 'pizzeria', 'trattoria',
+            'osteria', 'ramen shop', 'noodle bar', 'sushi bar', 'izakaya', 'tapas bar',
+            'steakhouse', 'grill', 'chophouse', 'seafood restaurant', 'oyster bar'
+        }
+
+        # Find keywords and boost them
         words_lower = text_content.lower().split()
         cuisine_words = [w for w in words_lower if w in CUISINE_KEYWORDS]
+        vibe_words = [w for w in words_lower if w in VIBE_KEYWORDS]
+        price_words = [w for w in words_lower if w in PRICE_KEYWORDS]
+        neighborhood_words = [w for w in words_lower if w in NEIGHBORHOOD_KEYWORDS]
+        venue_words = [w for w in words_lower if w in VENUE_KEYWORDS]
+
+        # Also check for multi-word phrases
+        text_lower = text_content.lower()
+        for phrase in ['date night', 'fine dining', 'bar seating', 'counter seating',
+                       'middle eastern', 'dim sum', 'soul food', 'coffee shop',
+                       'financial district', 'lower east side', 'east village', 'west village',
+                       'greenwich village', 'union square', 'times square', 'hells kitchen',
+                       'upper east side', 'upper west side', 'morningside heights',
+                       'east harlem', 'washington heights', 'battery park',
+                       'hidden gem', 'local favorite', 'hole in the wall', 'happy hour',
+                       'late night', 'family-style', 'wine bar', 'cocktail bar', 'dive bar',
+                       'sports bar', 'food hall', 'food court', 'ramen shop', 'noodle bar',
+                       'sushi bar', 'tapas bar', 'seafood restaurant', 'oyster bar']:
+            if phrase in text_lower:
+                if phrase in CUISINE_KEYWORDS:
+                    cuisine_words.append(phrase)
+                elif phrase in VIBE_KEYWORDS:
+                    vibe_words.append(phrase)
+                elif phrase in NEIGHBORHOOD_KEYWORDS:
+                    neighborhood_words.append(phrase)
+                elif phrase in VENUE_KEYWORDS:
+                    venue_words.append(phrase)
+
         if cuisine_words:
-            # Repeat cuisine words 2 more times (3x total)
+            # Repeat cuisine words 2 more times (3x total - STRONG boost)
             text_content = text_content + " " + " ".join(cuisine_words * 2)
+
+        if vibe_words:
+            # Repeat vibe words 1 more time (2x total - moderate boost)
+            text_content = text_content + " " + " ".join(vibe_words)
+
+        if price_words:
+            # Repeat price words 1 more time (2x total - moderate boost)
+            text_content = text_content + " " + " ".join(price_words)
+
+        if neighborhood_words:
+            # Repeat neighborhood words 1 more time (2x total - moderate boost)
+            text_content = text_content + " " + " ".join(neighborhood_words)
+
+        if venue_words:
+            # Repeat venue words 1 more time (2x total - moderate boost)
+            text_content = text_content + " " + " ".join(venue_words)
 
         text_vec = text_model.encode(
             text_content,
