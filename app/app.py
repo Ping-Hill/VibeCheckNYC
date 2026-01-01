@@ -176,24 +176,30 @@ def encode_query(text=None, image_file=None):
         boosted_text, convert_to_numpy=True, normalize_embeddings=True
     ).astype("float32")
 
-    # Image embedding (512 dimensions)
-    if image_file and USE_IMAGE_SEARCH:
-        try:
-            img = Image.open(BytesIO(image_file)).convert("RGB")
-            img_tensor = clip_preprocess(img).unsqueeze(0).to(DEVICE)
-            with torch.no_grad():
-                img_vec = clip_model.encode_image(img_tensor)
-            img_vec /= img_vec.norm(dim=-1, keepdim=True)
-            img_vec = img_vec.cpu().numpy()[0]
-        except Exception as e:
-            print(f"Error processing image: {e}")
-            img_vec = np.zeros(512, dtype=np.float32)
-    else:
-        img_vec = np.zeros(512, dtype=np.float32)
+    # Image embedding (512 dimensions) - DISABLED for text-only embeddings
+    # Note: Current embeddings are text-only (384 dim) for faster generation
+    # To re-enable image search, regenerate embeddings with images and uncomment below
 
-    # Combine: 384 text + 512 image = 896 dimensions
-    combined = np.concatenate([text_vec, img_vec]).astype("float32")
-    return combined[None, :]
+    # if image_file and USE_IMAGE_SEARCH:
+    #     try:
+    #         img = Image.open(BytesIO(image_file)).convert("RGB")
+    #         img_tensor = clip_preprocess(img).unsqueeze(0).to(DEVICE)
+    #         with torch.no_grad():
+    #             img_vec = clip_model.encode_image(img_tensor)
+    #         img_vec /= img_vec.norm(dim=-1, keepdim=True)
+    #         img_vec = img_vec.cpu().numpy()[0]
+    #     except Exception as e:
+    #         print(f"Error processing image: {e}")
+    #         img_vec = np.zeros(512, dtype=np.float32)
+    # else:
+    #     img_vec = np.zeros(512, dtype=np.float32)
+    #
+    # # Combine: 384 text + 512 image = 896 dimensions
+    # combined = np.concatenate([text_vec, img_vec]).astype("float32")
+    # return combined[None, :]
+
+    # Return text-only embeddings (384 dimensions)
+    return text_vec[None, :]
 
 
 def get_restaurant_details(restaurant_id, review_limit=10):
