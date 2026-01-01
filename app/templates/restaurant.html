@@ -69,9 +69,10 @@
                 <div>
                     {% if restaurant.photo_filename %}
                         <img
-                            src="/images/{{ restaurant.photo_filename }}"
+                            src="https://vibecheck-nyc-images.s3.us-east-1.amazonaws.com/images/{{ restaurant.photo_filename }}"
                             alt="{{ restaurant.name }}"
                             class="w-full h-96 object-cover rounded-xl shadow-lg"
+                            onerror="this.parentElement.innerHTML='<div class=\\'w-full h-96 bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl flex items-center justify-center\\'><span class=\\'text-8xl\\'>🍽️</span></div>'"
                         />
                     {% else %}
                         <div class="w-full h-96 bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl flex items-center justify-center">
