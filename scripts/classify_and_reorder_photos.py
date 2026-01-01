@@ -1,16 +1,18 @@
 """
 Classify restaurant photos as interior/exterior vs food using AI vision model.
-Then reorder photos in database so interior/exterior photos show first.
+Then reorder photos so interior/exterior photos show first.
+DOES NOT TOUCH ROUTING - only reorders photos within each restaurant.
 """
-import os
 import sqlite3
+import json
 from pathlib import Path
 from transformers import pipeline
 from PIL import Image
 
 # Paths
 DB_PATH = Path(__file__).parent.parent / "vibecheck_full_output" / "vibecheck.db"
-IMAGE_DIR = Path(__file__).parent.parent / "vibecheck_full_output" / "images"
+IMAGE_DIR = Path(__file__).parent.parent / "vibecheck_full_output" / "images_compressed"
+CHECKPOINT_FILE = Path(__file__).parent.parent / "vibecheck_full_output" / "classify_checkpoint.json"
 
 # Load CLIP vision model for zero-shot image classification
 print("Loading vision model...")
@@ -18,7 +20,7 @@ classifier = pipeline("zero-shot-image-classification", model="openai/clip-vit-b
 
 def classify_photo(image_path):
     """
-    Classify a photo as 'interior' (building/space), 'food', or 'people' (reject).
+    Classify a photo as 'interior' (building/space), 'food', or 'people'.
     Returns: 'interior', 'food', or 'people'
     """
     try:
@@ -29,20 +31,16 @@ def classify_photo(image_path):
         people_results = classifier(image, candidate_labels=people_labels)
 
         if people_results[0]['label'].startswith('people') and people_results[0]['score'] > 0.65:
-            print(f"  {image_path.name}: PEOPLE PHOTO - SKIP ({people_results[0]['score']:.2f})")
             return 'people'
 
         # Second check: Interior/exterior vs food
-        labels = ["restaurant interior or exterior building", "food dish plate meal"]
+        labels = ["restaurant interior or exterior building atmosphere", "food dish plate meal"]
         results = classifier(image, candidate_labels=labels)
 
         top_label = results[0]['label']
-        score = results[0]['score']
-
-        print(f"  {image_path.name}: {top_label} ({score:.2f})")
 
         # Map to simple category
-        if "interior" in top_label or "exterior" in top_label:
+        if "interior" in top_label or "exterior" in top_label or "atmosphere" in top_label:
             return 'interior'
         else:
             return 'food'
@@ -50,35 +48,48 @@ def classify_photo(image_path):
         print(f"  Error classifying {image_path.name}: {e}")
         return 'unknown'
 
-def reorder_photos(test_mode=True, test_limit=10):
-    """
-    Classify all vibe photos and reorder them so interior/exterior photos come first.
+def load_checkpoint():
+    """Load processed restaurant IDs from checkpoint."""
+    if CHECKPOINT_FILE.exists():
+        with open(CHECKPOINT_FILE, 'r') as f:
+            return set(json.load(f).get('processed', []))
+    return set()
 
-    Args:
-        test_mode: If True, only process test_limit restaurants
-        test_limit: Number of restaurants to process in test mode
+def save_checkpoint(processed_ids):
+    """Save processed restaurant IDs to checkpoint."""
+    with open(CHECKPOINT_FILE, 'w') as f:
+        json.dump({'processed': list(processed_ids)}, f)
+
+def reorder_photos():
+    """
+    Classify all photos and reorder them so interior/exterior photos come first.
+    DOES NOT CHANGE restaurant_id - only reorders photos within each restaurant.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Get all restaurants
-    cursor.execute("SELECT DISTINCT restaurant_id FROM vibe_photos WHERE local_filename LIKE '%_vibe_%'")
+    # Load checkpoint
+    processed_ids = load_checkpoint()
+    print(f"Loaded checkpoint: {len(processed_ids)} restaurants already processed")
+
+    # Get all restaurants that have photos
+    cursor.execute("SELECT DISTINCT restaurant_id FROM vibe_photos ORDER BY restaurant_id")
     restaurant_ids = [row[0] for row in cursor.fetchall()]
 
-    if test_mode:
-        restaurant_ids = restaurant_ids[:test_limit]
-        print(f"\n🧪 TEST MODE: Processing {len(restaurant_ids)} restaurants...")
-    else:
-        print(f"\nProcessing {len(restaurant_ids)} restaurants...")
+    # Filter out already processed
+    restaurant_ids = [rid for rid in restaurant_ids if rid not in processed_ids]
+
+    print(f"\nProcessing {len(restaurant_ids)} restaurants...")
+    print(f"Total to process including already done: {len(restaurant_ids) + len(processed_ids)}")
 
     for i, restaurant_id in enumerate(restaurant_ids, 1):
         print(f"\n[{i}/{len(restaurant_ids)}] Restaurant ID: {restaurant_id}")
 
-        # Get all vibe photos for this restaurant
+        # Get ALL photos for this restaurant (both vibe and ChIJ)
         cursor.execute("""
-            SELECT id, local_filename, photo_url
+            SELECT id, local_filename, photo_url, restaurant_id
             FROM vibe_photos
-            WHERE restaurant_id = ? AND local_filename LIKE '%_vibe_%'
+            WHERE restaurant_id = ?
             ORDER BY id
         """, (restaurant_id,))
 
@@ -88,7 +99,11 @@ def reorder_photos(test_mode=True, test_limit=10):
 
         # Classify each photo
         classified_photos = []
-        for photo_id, filename, photo_url in photos:
+        for photo_id, filename, photo_url, resto_id in photos:
+            if not filename:
+                print(f"  Warning: Photo ID {photo_id} has no filename, skipping")
+                continue
+
             image_path = IMAGE_DIR / filename
 
             if image_path.exists():
@@ -97,40 +112,55 @@ def reorder_photos(test_mode=True, test_limit=10):
                     'id': photo_id,
                     'filename': filename,
                     'photo_url': photo_url,
+                    'restaurant_id': resto_id,  # PRESERVE restaurant_id
                     'category': category
                 })
+                print(f"  {filename}: {category}")
             else:
-                print(f"  Warning: {filename} not found, skipping")
+                print(f"  Warning: {filename} not found in images_compressed, skipping")
+                # Keep it but mark as unknown
+                classified_photos.append({
+                    'id': photo_id,
+                    'filename': filename,
+                    'photo_url': photo_url,
+                    'restaurant_id': resto_id,
+                    'category': 'unknown'
+                })
 
-        # Reorder: interior/exterior first, then food, skip people photos
+        # Reorder: interior/exterior first, then food, then people, then unknown
         interior_photos = [p for p in classified_photos if p['category'] == 'interior']
         food_photos = [p for p in classified_photos if p['category'] == 'food']
         people_photos = [p for p in classified_photos if p['category'] == 'people']
         unknown_photos = [p for p in classified_photos if p['category'] == 'unknown']
 
-        # Delete people photos from database
-        for photo in people_photos:
-            print(f"    Deleting people photo: {photo['filename']}")
-            cursor.execute("DELETE FROM vibe_photos WHERE id = ?", (photo['id'],))
+        reordered = interior_photos + food_photos + people_photos + unknown_photos
 
-        reordered = interior_photos + food_photos + unknown_photos
+        print(f"  Reordered: {len(interior_photos)} interior, {len(food_photos)} food, {len(people_photos)} people, {len(unknown_photos)} unknown")
 
-        print(f"  Reordered: {len(interior_photos)} interior, {len(food_photos)} food, {len(people_photos)} people (deleted), {len(unknown_photos)} unknown")
-
-        # Update database with new order by renaming files
-        # We'll update the filenames to include a sort prefix
+        # Update database by renaming files to match new order
         for new_order, photo in enumerate(reordered, 1):
-            # Extract base name without _vibe_X.jpg
-            base_name = photo['filename'].rsplit('_vibe_', 1)[0]
-            ext = photo['filename'].rsplit('.', 1)[-1]
+            old_filename = photo['filename']
 
-            # Create new filename with correct order
-            new_filename = f"{base_name}_vibe_{new_order}.{ext}"
+            # Determine new filename based on type
+            if old_filename.startswith('ChIJ'):
+                # ChIJ photos: ChIJxxxxxx_1.jpg -> ChIJxxxxxx_<new_order>.jpg
+                # Keep everything before the last underscore
+                base_name = old_filename.rsplit('_', 1)[0]  # Everything before last _
+                ext = old_filename.rsplit('.', 1)[-1]
+                new_filename = f"{base_name}_{new_order}.{ext}"
+            elif '_vibe_' in old_filename:
+                # Vibe photos: Restaurant_vibe_1.jpg -> Restaurant_vibe_<new_order>.jpg
+                base_name = old_filename.rsplit('_vibe_', 1)[0]
+                ext = old_filename.rsplit('.', 1)[-1]
+                new_filename = f"{base_name}_vibe_{new_order}.{ext}"
+            else:
+                # Unknown format, skip
+                continue
 
-            if new_filename != photo['filename']:
-                print(f"    Renaming: {photo['filename']} -> {new_filename}")
+            if new_filename != old_filename:
+                print(f"    Renaming: {old_filename} -> {new_filename}")
 
-                # Update database
+                # Update database (PRESERVE restaurant_id)
                 cursor.execute("""
                     UPDATE vibe_photos
                     SET local_filename = ?
@@ -138,14 +168,21 @@ def reorder_photos(test_mode=True, test_limit=10):
                 """, (new_filename, photo['id']))
 
                 # Rename physical file
-                old_path = IMAGE_DIR / photo['filename']
+                old_path = IMAGE_DIR / old_filename
                 new_path = IMAGE_DIR / new_filename
                 if old_path.exists():
                     old_path.rename(new_path)
 
-    conn.commit()
+        # Mark as processed and save checkpoint
+        processed_ids.add(restaurant_id)
+        save_checkpoint(processed_ids)
+
+        # Commit after each restaurant
+        conn.commit()
+
     conn.close()
-    print("\n✅ Photo reordering complete!")
+    print("\n✅ Photo classification and reordering complete!")
+    print(f"Total restaurants processed: {len(processed_ids)}")
 
 if __name__ == "__main__":
     reorder_photos()
