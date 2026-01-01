@@ -202,7 +202,7 @@ def encode_query(text=None, image_file=None):
     return text_vec[None, :]
 
 
-def get_restaurant_details(restaurant_id, review_limit=10):
+def get_restaurant_details(restaurant_id, review_limit=15):
     """Get full restaurant details from database."""
     conn = get_db()
     cursor = conn.cursor()
