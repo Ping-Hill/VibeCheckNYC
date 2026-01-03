@@ -210,7 +210,7 @@ def get_restaurant_details(restaurant_id, review_limit=15):
     # Get basic info
     cursor.execute(
         """
-        SELECT id, name, rating, address, reviews_count, place_id, neighborhood, price_level
+        SELECT id, name, rating, address, reviews_count, place_id, neighborhood, price_level, latitude, longitude
         FROM restaurants
         WHERE id = ?
     """,
@@ -473,10 +473,12 @@ def vibe_stats():
 
         # Get top 5 restaurants with this vibe
         cursor.execute("""
-            SELECT r.id, r.name, r.rating, va.mention_count
+            SELECT r.id, r.name, r.rating, va.mention_count, p.local_filename
             FROM vibe_analysis va
             JOIN restaurants r ON va.restaurant_id = r.id
+            LEFT JOIN vibe_photos p ON r.id = p.restaurant_id
             WHERE va.vibe_name = ?
+            GROUP BY r.id
             ORDER BY va.mention_count DESC, r.rating DESC
             LIMIT 5
         """, (vibe_name,))
@@ -486,7 +488,8 @@ def vibe_stats():
                 "id": r[0],
                 "name": r[1],
                 "rating": r[2],
-                "mention_count": r[3]
+                "mention_count": r[3],
+                "photo_filename": r[4]
             }
             for r in cursor.fetchall()
         ]
@@ -513,6 +516,8 @@ def top_rated():
             r.name,
             r.rating,
             r.address,
+            r.latitude,
+            r.longitude,
             p.local_filename as photo_filename
         FROM restaurants r
         LEFT JOIN vibe_photos p ON r.id = p.restaurant_id
@@ -529,7 +534,9 @@ def top_rated():
             "name": row[1],
             "rating": row[2],
             "address": row[3],
-            "photo_filename": row[4]
+            "latitude": row[4],
+            "longitude": row[5],
+            "photo_filename": row[6]
         }
         for row in cursor.fetchall()
     ]
