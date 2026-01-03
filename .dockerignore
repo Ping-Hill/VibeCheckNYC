@@ -39,7 +39,8 @@ vibecheck_full_output/*_expanded.npy
 vibecheck_full_output/*_expanded.faiss
 
 # Exclude JSON metadata files (not needed at runtime)
-vibecheck_full_output/*.json
+# Temporarily including all JSON files for migration
+# vibecheck_full_output/*.json
 
 # Exclude old data directory
 data/
