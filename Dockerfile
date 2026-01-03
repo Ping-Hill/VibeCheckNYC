@@ -17,6 +17,9 @@ COPY app/ ./app/
 # Copy neighborhood mapping to root for imports
 COPY neighborhood_mapping.py ./
 
+# Copy migration scripts
+COPY scripts/ ./scripts/
+
 # Copy startup script
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
