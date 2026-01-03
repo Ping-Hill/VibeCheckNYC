@@ -24,9 +24,11 @@ COPY scripts/ ./scripts/
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
+# Force cache invalidation for database layer
+RUN echo "Build timestamp: 2026-01-02-21:25" > /tmp/build_marker
+
 # Copy ALL vibecheck data (database with lat/lon, embeddings, images)
 # This avoids path-level failures and is more deterministic
-# Cache bust: 2026-01-02-21:20 - Database now has latitude/longitude populated
 COPY vibecheck_full_output/ ./vibecheck_full_output/
 
 # Expose port
