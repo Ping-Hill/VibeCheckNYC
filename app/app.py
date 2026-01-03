@@ -501,6 +501,43 @@ def vibe_stats():
     return jsonify({"vibes": vibes})
 
 
+@app.route("/api/top-rated")
+def top_rated():
+    """Get highest rated restaurants."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            r.id,
+            r.name,
+            r.rating,
+            r.address,
+            p.local_filename as photo_filename
+        FROM restaurants r
+        LEFT JOIN vibe_photos p ON r.id = p.restaurant_id
+        WHERE r.rating >= 4.5
+        GROUP BY r.id
+        HAVING COUNT(DISTINCT p.id) > 0
+        ORDER BY r.rating DESC, r.reviews_count DESC
+        LIMIT 20
+    """)
+
+    restaurants = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "rating": row[2],
+            "address": row[3],
+            "photo_filename": row[4]
+        }
+        for row in cursor.fetchall()
+    ]
+
+    conn.close()
+    return jsonify({"restaurants": restaurants})
+
+
 @app.route("/images/<path:filename>")
 def serve_image(filename):
     """Serve restaurant images."""
