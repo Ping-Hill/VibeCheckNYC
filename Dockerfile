@@ -24,9 +24,9 @@ COPY scripts/ ./scripts/
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
-# Copy ALL vibecheck data (database, embeddings, images)
+# Copy ALL vibecheck data (database, embeddings, images, JSON for migration)
 # This avoids path-level failures and is more deterministic
-# Cache bust: 2026-01-02-20:30 - Added latitude and longitude columns to database
+# Cache bust: 2026-01-02-21:15 - Including JSON files for lat/lon migration
 COPY vibecheck_full_output/ ./vibecheck_full_output/
 
 # Expose port
